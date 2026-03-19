@@ -2,11 +2,12 @@ from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 import google.generativeai as genai
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 # --- Configuration ---
-
-# Replace with your actual API Key or use an environment variable
-genai.configure(api_key="AIzaSyDeECU04l1QbY1cioNlHpqcTSitbZfS6FM")
 
 # Initialize the Gemini 2.0 Flash model with system instructions
 # This defines the persona of MENTORVIX AI
