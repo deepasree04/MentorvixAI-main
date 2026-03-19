@@ -1,100 +1,58 @@
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status
+import google.generativeai as genai
+
+# --- Configuration ---
+
+# Replace with your actual API Key or use an environment variable
+genai.configure(api_key="AIzaSyDeECU04l1QbY1cioNlHpqcTSitbZfS6FM")
+
+# Initialize the Gemini 2.0 Flash model with system instructions
+# This defines the persona of MENTORVIX AI
+model = genai.GenerativeModel(
+    model_name="gemini-2.5-flash",
+    system_instruction=(
+        "You are MENTORVIX AI, a helpful career assistant. "
+        "You give concise, practical advice on career paths, skills, roadmaps, "
+        "and learning resources. Keep responses friendly and to the point."
+    )
+)
+
+# --- Page Views ---
+
 @api_view(['GET'])
 def home(request):
+    """Renders the main landing page."""
     return render(request, "home_page/home.html")
+
+
 def ai_chat_page(request):
+    """Renders the dedicated AI chat interface."""
     return render(request, "chat/aichat.html")
+
+
+# --- API Logic ---
 
 @api_view(["POST"])
 def ai_chat(request):
-    text = request.data.get("interest", "").lower()
-    if "data" in text:
-        return Response({
-            "career": "Data Scientist",
-            "roadmap": [
-                "Python",
-                "Statistics & Probability",
-                "Data Analysis (Pandas, NumPy)",
-                "Machine Learning",
-                "Projects & Kaggle"
-            ],
-            "resources": {
-                "youtube": [
-                    "https://www.youtube.com/@KrishNaik",
-                    "https://www.youtube.com/@codebasics"
-                ],
-                "pdf": [
-                    "https://github.com/ossu/data-science"
-                ]
-            }
-        })
+    """
+    Handles POST requests from the frontend, sends user input to Gemini,
+    and returns the AI's response.
+    """
+    # Extract the message sent from the JavaScript fetch call
+    user_input = request.data.get("message")
 
-    elif "ai" in text:
-        return Response({
-            "career": "AI Engineer",
-            "roadmap": [
-                "Python",
-                "Linear Algebra",
-                "Machine Learning",
-                "Deep Learning",
-                "AI Projects"
-            ],
-            "resources": {
-                "youtube": [
-                    "https://www.youtube.com/@sentdex",
-                    "https://www.youtube.com/@AndrewNg"
-                ],
-                "pdf": [
-                    "https://github.com/karpathy/nn-zero-to-hero"
-                ]
-            }
-        })
+    if not user_input:
+        return Response({"error": "No input provided"}, status=400)
 
-    elif "cloud" in text:
-        return Response({
-            "career": "Cloud Engineer",
-            "roadmap": [
-                "Networking Basics",
-                "Linux",
-                "AWS / Azure / GCP",
-                "Docker & Kubernetes",
-                "Cloud Security Basics"
-            ],
-            "resources": {
-                "youtube": [
-                    "https://www.youtube.com/@freecodecamp",
-                    "https://www.youtube.com/@TechWorldwithNana"
-                ],
-                "pdf": [
-                    "https://roadmap.sh/cloud"
-                ]
-            }
-        })
+    try:
+        # Generate content using the initialized Gemini model
+        response = model.generate_content(user_input)
+        
+        # Return the text portion of the Gemini response
+        return Response({"reply": response.text})
 
-    elif "web" in text or "full stack" in text:
-        return Response({
-            "career": "Full Stack Developer",
-            "roadmap": [
-                "HTML, CSS, JavaScript",
-                "React",
-                "Backend (Django / Node)",
-                "Databases",
-                "Projects"
-            ],
-            "resources": {
-                "youtube": [
-                    "https://www.youtube.com/@TraversyMedia",
-                    "https://www.youtube.com/@freecodecamp"
-                ],
-                "pdf": [
-                    "https://roadmap.sh/full-stack"
-                ]
-            }
-        })
-
-    return Response({
-        "message": "Please ask about Data Science, AI, Cloud, or Full Stack"
-    })
+    except Exception as e:
+        # Catch errors (e.g., API quota limits, network issues)
+        return Response({"error": str(e)}, status=500)

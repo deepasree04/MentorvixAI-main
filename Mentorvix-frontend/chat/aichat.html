@@ -284,101 +284,86 @@
   </div>
 
   <script>
-    const chat = document.getElementById("chat");
-    const input = document.getElementById("input");
-    const typingIndicator = document.getElementById("typingIndicator");
-
-    function addBotMessage(text) {
-      const div = document.createElement("div");
-      div.className = "msg bot";
-      div.innerText = text;
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
+    function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    for (let cookie of document.cookie.split(';')) {
+      cookie = cookie.trim();
+      if (cookie.startsWith(name + '=')) {
+        cookieValue = decodeURIComponent(cookie.slice(name.length + 1));
+        break;
+      }
     }
+  }
+  return cookieValue;
+}
+  const chat = document.getElementById("chat");
+  const input = document.getElementById("input");
+  const typingIndicator = document.getElementById("typingIndicator");
 
-    function addUserMessage(text) {
-      const div = document.createElement("div");
-      div.className = "msg user";
-      div.innerText = text;
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
-    }
+  function addBotMessage(text) {
+    const div = document.createElement("div");
+    div.className = "msg bot";
+    div.innerText = text;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
 
-    function showTyping() {
-      typingIndicator.classList.add("show");
-      chat.scrollTop = chat.scrollHeight;
-    }
+  function addUserMessage(text) {
+    const div = document.createElement("div");
+    div.className = "msg user";
+    div.innerText = text;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
 
-    function hideTyping() {
-      typingIndicator.classList.remove("show");
-    }
+  function showTyping() {
+    typingIndicator.classList.add("show");
+    chat.appendChild(typingIndicator);
+    chat.scrollTop = chat.scrollHeight;
+  }
 
-    function send() {
-      let message = input.value.trim();
-      if (!message) return;
+  function hideTyping() {
+    typingIndicator.classList.remove("show");
+  }
 
-      addUserMessage(message);
-      input.value = "";
-      showTyping();
+  function send() {
+    let message = input.value.trim();
+    if (!message) return;
 
-      fetch("/api/ai-chat/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ interest: message.toLowerCase() })
+    addUserMessage(message);
+    input.value = "";
+    showTyping();
+
+    fetch("/api/ai-chat/", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-CSRFToken": getCookie("csrftoken")  // add this
+  },
+  body: JSON.stringify({ message: message })
+})
+      .then(res => {
+        if (!res.ok) throw new Error("Server error");
+        return res.json();
       })
-        .then(res => {
-          if (!res.ok) throw new Error("Server error");
-          return res.json();
-        })
-        .then(data => {
-          hideTyping();
-          let reply = "";
+      .then(data => {
+  hideTyping();
 
-          if (data.career) {
-            reply += "🎯 Career: " + data.career + "\n\n";
-          }
-
-
-          if (data.roadmap) {
-            reply += "📍 Roadmap:\n";
-            data.roadmap.forEach((step, i) => {
-              reply += `${i + 1}. ${step}\n`;
-            });
-          }
-          if (data.resources) {
-            reply += "\n📚 Resources:\n";
-
-            if (data.resources.youtube) {
-              reply += "\nYouTube:\n";
-              data.resources.youtube.forEach(link => {
-                reply += "- " + link + "\n";
-              });
-            }
-
-            if (data.resources.pdf) {
-              reply += "\nPDF:\n";
-              data.resources.pdf.forEach(link => {
-                reply += "- " + link + "\n";
-              });
-            }
-          }
-
-          addBotMessage(reply || "⚠️ No data received");
-        })
-        .catch(err => {
-          hideTyping();
-          console.error(err);
-          addBotMessage("❌ Could not connect to AI server. Please try again later.");
-        });
-    }
-
-    function quickSend(text) {
-      input.value = text;
-      send();
-    }
-  </script>
+  if (data.reply) {
+    addBotMessage(data.reply);
+  } else if (data.error) {
+    addBotMessage("❌ " + data.error);
+  } else {
+    addBotMessage("⚠️ No response from AI");
+  }
+})
+  }
+  function quickSend(text) {
+    input.value = text;
+    send();
+  }
+</script>
 </body>
 
 </html>
